@@ -1,29 +1,32 @@
-# 0.3.0-beta.1
+# Changelog
 
-- 新增批量歌词和独立封面导出，转换后可选自动处理，失败项按任务类型重试。
-- 新增开发板 WAV 预设：SoXR HQ 流式重采样到 48 kHz / PCM16 / 双声道。
-- 新增统一命名、歌曲信息、歌词时间轴预览、毫秒偏移和同名 LRC 保存。
-- 新增本地内嵌封面读取和按准确歌曲编号补全在线专辑封面。
-- 区分转换全部与选中项，提供右键菜单和生成文件定位；未选中时禁用相关操作。
-- 拆分界面、任务、歌词、媒体素材和文件发布模块，完善错误分类、取消与原文件保护。
-- 深色下拉框、标签页、居中弹窗与小屏滚动；增加便携 EXE 隔离自测。
-- 本版本包含此前未公开发布的 0.2.0 歌词功能。
+**English** | [简体中文](CHANGELOG.zh-CN.md)
 
-# 更新记录
+## 0.3.0-beta.1
 
-## 0.2.0-beta.1
+- Batch lyric and artwork export, optional automatic processing during conversion, and retries by task type.
+- Embedded-player WAV preset: SoXR HQ streaming resampling to 48 kHz / PCM16 / stereo.
+- Shared output names, song information, timestamped lyric preview, millisecond adjustment, and LRC saving.
+- Embedded-artwork extraction and online album-artwork fallback using an explicit song ID.
+- Separate conversion actions for all or selected files, context menus, and generated-file location.
+- Separate UI, worker, lyric, media-asset, and file-publication modules; improved errors, cancellation, and original-file protection.
+- Dark dropdowns and tabs, centered dialogs, small-screen scrolling, and isolated portable EXE smoke tests.
+- Corrected source LRC offset direction; positive UI adjustments delay the exported timestamps.
+- Includes lyric functionality developed in the unreleased 0.2.0 milestone.
 
-- 选中歌曲后独立导出带逐行时间戳的 UTF-8 LRC。
-- musicex v1 自动识别歌曲编号；普通音频支持手动提供 QQ 音乐歌曲详情链接。
-- 歌词查询不读取登录会话、不上传音频；已有同名 LRC 不覆盖。
-- 支持重复时间点、offset 偏移与实体解码；取消和网络失败不影响音频转换。
+## 0.2.0-beta.1 (not released separately)
+
+- Independent UTF-8 LRC export for a selected song, preserving line timestamps.
+- Automatic song-ID detection for musicex v1; manual QQ Music detail links for ordinary audio.
+- Lyric requests without login-session access or audio uploads; existing LRC protection.
+- Repeated timestamps, offset handling, entity decoding, cancellation, and network-error handling.
 
 ## 0.1.0-beta.1
 
-- 深色卡片界面、薄荷绿操作色、原生键盘导航和明确的勾选图标。
-- 独立滚动内容区域，底部操作固定，适配小屏和高 DPI。
-- 单首分阶段进度、批量总进度和失败项重试。
-- 协作取消读文件、解码、完整性检查及编码；清理临时输出。
-- 同一批次复用登录会话，限制扫描字节、扫描时间与网络响应体大小。
-- 仅记住输出目录；登录与覆盖默认关闭。
-- 增加离线合成音频测试、源码白名单打包、固定依赖、许可证与校验值。
+- Dark card UI, mint accents, keyboard navigation, and check-mark indicators.
+- Scrollable content with fixed bottom actions for small screens and high DPI.
+- Per-song phase progress, batch progress, and failed-item retries.
+- Cooperative cancellation during input reading, decoding, verification, and encoding, with temporary-output cleanup.
+- Batch session reuse and limits on memory scanning, elapsed time, and network response size.
+- Output-directory persistence only; login and overwrite options off by default.
+- Offline synthetic-audio tests, allowlisted source packaging, pinned dependencies, licenses, and checksums.

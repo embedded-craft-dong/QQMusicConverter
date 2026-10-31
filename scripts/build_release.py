@@ -13,7 +13,7 @@ from music_gui import VERSION
 
 SOURCE_FILES=('music_gui.py','music_workspace.py','tasks.py','media_assets.py','output_files.py','frozen_smoke.py',
               'ui_theme.py','convert_music.py','qmc_core.py','qq_session.py','job.py','settings.py','lyrics.py',
-              'requirements.txt','requirements-build.txt','README.md','CHANGELOG.md','LICENSE',
+              'requirements.txt','requirements-build.txt','README.md','README.zh-CN.md','CHANGELOG.md','CHANGELOG.zh-CN.md','LICENSE',
               'THIRD_PARTY_NOTICES.md','.gitignore','.gitattributes')
 SOURCE_DIRS=('scripts','tests','docs','assets','licenses','.github')
 ALLOWED_EXT={'.py','.md','.txt','.yml','.yaml','.png','.ico','.terms'}
@@ -70,7 +70,7 @@ def package_release():
     binary=release/f'QQMusicConverter-{VERSION}-windows-x64.zip'
     with zipfile.ZipFile(binary,'w',zipfile.ZIP_DEFLATED) as z:
         z.write(dist/'QQMusicConverter.exe','QQMusicConverter.exe')
-        for name in ('README.md','LICENSE','THIRD_PARTY_NOTICES.md','CHANGELOG.md'):
+        for name in ('README.md','README.zh-CN.md','LICENSE','THIRD_PARTY_NOTICES.md','CHANGELOG.md','CHANGELOG.zh-CN.md'):
             z.write(ROOT/name,name)
         for directory in ('licenses','docs'):
             for path in (ROOT/directory).rglob('*'):

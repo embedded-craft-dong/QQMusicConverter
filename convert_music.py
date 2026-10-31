@@ -266,7 +266,7 @@ def convert(path, args, sf, np):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='本次 musicex-v1 MGG / 普通 OGG、FLAC、WAV 转高质量 VBR MP3；保留原件。')
+    parser = argparse.ArgumentParser(description='将支持的本地音频转换为高质量 VBR MP3 或开发板 PCM WAV；保留原件。')
     parser.add_argument('input', type=Path, help='一个音频文件或文件夹（不递归）')
     parser.add_argument('-o', '--output-dir', type=Path)
     group = parser.add_mutually_exclusive_group()

@@ -1,51 +1,25 @@
-# 发行验收记录
+# Release validation
+
+**English** | [简体中文](RELEASE_CHECKS.zh-CN.md)
 
 ## 0.3.0-beta.1
 
-- 本机 Windows x64 / Python 3.12.14：34 项离线回归通过；fixture 为合成音频、图片和歌词。
-- WAV 验证涵盖 44.1 kHz 单声道、48/96 kHz 双声道，采样率、PCM16、时长、音高、跨块连续性、抗混叠与取消保护。
-- GUI 验证涵盖转换选中、自动素材、单独失败重试、预览偏移、已有 LRC 保护、队列原文件保护，以及 100%/125%/150%/200% 小屏布局。
-- 实际在线验证：歌曲信息、专辑 JPG、118 行逐行时间戳 LRC、统一输出名成功；真实素材留在仓库外。
-- EXE 本机界面检查：主窗口、居中歌曲设置、标签页、在线歌词预览、完成后恢复控件。
-- 便携 EXE 隔离自测：复制到无源码的临时目录，清除 Python 环境变量、PATH 仅保留系统目录，MP3/WAV/内嵌封面/LRC/Tk 均通过。
-- 发布流程要求当前提交的 GitHub Windows CI 成功（相同回归、构建和 EXE 隔离自测）后才公开 Release。
-- 发布包只包含程序、白名单源码、许可和说明；不包含真实音乐、歌词、封面、凭据、个人配置或构建目录。
+- 34 offline regression tests passed on Windows x64 with Python 3.12.14, using generated audio, artwork, and lyrics.
+- WAV checks cover 44.1 kHz mono and 48/96 kHz stereo inputs, output parameters, duration, pitch, chunk continuity, anti-aliasing, and cancellation protection.
+- GUI tests cover selected conversion, automatic assets, independent retries, lyric adjustment, existing-LRC protection, queued-original protection, and layouts at 100% / 125% / 150% / 200% scaling.
+- Live-service checks successfully retrieved song information, album JPG artwork, and an LRC with 118 timed lines using a shared output name. Real media are excluded from the repository and release packages.
+- Executable UI checks covered the main window, centered settings dialog, tabs, online lyric preview, and control recovery after completion.
+- Portable EXE smoke tests passed for MP3, WAV, embedded artwork, LRC, and Tk after copying the EXE to a source-free directory, clearing Python environment variables, and restricting PATH to the Windows system directory.
+- [Windows CI passed for the release commit](https://github.com/embedded-craft-dong/QQMusicConverter/actions/runs/41196381480), including regression tests, executable build, and portable smoke tests.
+- All four published release assets were checked against their SHA-256 digests. The release tag matches the tested commit.
 
-尚未在独立的无 Python Windows 10/11 实体电脑上验收；隔离自测和 CI 不能代替所有硬件环境验证。
-在线实测不保证所有歌曲可用。加密音频登录适配沿用既有实现，本版未声称重新验证所有 QQ 音乐客户端版本。
+### Remaining limits
 
-## 0.2.0-beta.1 本地候选版
+Validation has not been completed on a separate physical Windows 10/11 computer without Python. Isolation tests and CI do not cover every hardware environment.
+Live checks do not guarantee availability for all songs. The encrypted-audio login adapter was retained from the previous implementation; this release does not claim compatibility testing against every QQ Music client version.
 
-- Windows x64 / Python 3.12.14：23 项自动化测试通过。
-- 新增歌词编号解析、musicex 有界读取、逐行时间戳与 offset、取消、网络异常、防覆盖、GUI 状态隔离测试。
-- 使用本地歌曲进行在线 LRC 导出验证：118 行时间戳、UTF-8 文件可读取、原音频 SHA-256 不变，无临时文件残留。
-- PyInstaller 单文件 EXE 构建成功；已从 EXE 添加并选中歌曲，打开歌词弹窗、自动识别编号、完成在线导出并恢复界面控件。
-- 在线实测内容与本地歌曲不会包含在源码或发行包中；自动化测试只使用合成歌词和模拟接口。
-- 本版为本地候选版，尚未公开发布；在线服务的单曲验证不代表所有歌曲和客户端都可用。
+## 0.1.0-beta.1
 
-# 0.1.0-beta.1 验收记录
+The first public beta passed 14 offline tests and local executable checks. Coverage included synthetic OGG/WAV and musicex/QMC2 conversion, full output decoding, TEA vectors, corruption and wrong-key detection, overwrite protection, cancellation cleanup, mocked session reuse, GUI retries, settings, and display scaling.
 
-## 已执行
-
-- 本机 Windows x64 / Python 3.12.14 自动化离线回归。
-- 合成 OGG/WAV、合成 musicex/QMC2 转 MP3 和完整解码校验。
-- TEA 已知向量、损坏 OGG、错误密钥、已有输出保护。
-- 编码及验证阶段取消后临时文件清理，原件和已有输出不变。
-- 模拟接口的批次会话复用；扫描预算与 ASCII/UTF-16 字段解析。
-- GUI 转换、失败重试、停止后恢复控件、设置保存。
-- 模拟 1366×768、100%/125%/150%/200% 缩放的布局边界检查。
-- 开发版窗口已检查勾号显示。
-- PyInstaller 无控制台单文件 EXE 构建成功；维护者已完成本机试用，反馈运行正常。
-
-## 发布状态
-
-首个公开测试版。EXE 与源码包由 scripts/build_release.py 构建，SHA-256 随发行包提供。
-本机试用不等于所有系统和客户端版本的兼容性验证；模拟接口测试不代表在线接口全面实测。
-
-## 仍待实机确认
-
-- 在无 Python 的独立 Windows 10/11 x64 电脑解压启动、转换普通音频。
-- 用户本人登录 QQ 音乐后，对有权限的 musicex v1 文件验证在线密钥获取。
-- 不同显示器/系统缩放的实际观感及触控、辅助功能。
-
-上述项目不阻止分享标明限制的测试版，但未完成前不应标称稳定版或全面兼容。
+Its Windows CI also passed. These results do not establish compatibility with every Windows installation or QQ Music client. Separate clean-machine and broader hardware/accessibility checks remain outside the verified scope.

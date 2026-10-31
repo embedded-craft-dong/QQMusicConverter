@@ -1,97 +1,124 @@
-# 音乐素材工作台 · QQMusicConverter
+# QQMusicConverter · Music Asset Workbench
 
-Windows x64 桌面工具：准备音频、同步歌词和封面，供日常播放或单片机播放器使用。
-当前版本：**0.3.0-beta.1**。
+**English** | [简体中文](README.zh-CN.md)
 
-**[下载 Windows 便携版](https://github.com/embedded-craft-dong/QQMusicConverter/releases/tag/v0.3.0-beta.1)** · [更新记录](CHANGELOG.md) · [隐私说明](docs/PRIVACY.md)
+A Windows desktop tool for preparing audio, synchronized lyrics, and album artwork for everyday listening and embedded music players.
 
-解压发行 ZIP，双击 `QQMusicConverter.exe`。无需安装 Python；普通音频转换无需登录。
+**[Download for Windows x64](https://github.com/embedded-craft-dong/QQMusicConverter/releases/tag/v0.3.0-beta.1)** · [Changelog](CHANGELOG.md) · [Privacy](docs/PRIVACY.md) · [Validation](docs/RELEASE_CHECKS.md)
 
-## 快速使用
+Current version: **0.3.0-beta.1**. Extract the portable ZIP and run `QQMusicConverter.exe`; no Python installation is required.
+The application interface is currently Simplified Chinese. The button guide below helps English-speaking users navigate it; an English interface is not included in this release.
 
-1. 添加文件或文件夹（只扫描当前目录，不递归）。Ctrl+O 也可添加。
-2. 选择输出目录和格式：高质量 VBR MP3，或开发板 PCM WAV。
-3. 按需勾选“转换后自动导出歌词”“转换后保存封面”，两项默认关闭。
-4. 点击“转换全部”，或在列表多选后点击“转换选中”。
-5. 完成后打开输出文件夹；右键歌曲可定位本次生成的文件。
+## Features
 
-歌词和封面也可以独立批量导出：多选歌曲，点击“导出歌词”或“保存封面”。
-每首歌的音频、歌词和封面单独记录结果；“重试失败项”只重做失败的部分，不重复编码成功的音频。
-停止会保留已完成文件，清理正在写入的临时文件。网络调用可能需要等到返回或超时才能取消。
+- Batch conversion to high-quality VBR MP3 or board-ready 48 kHz / 16-bit / stereo PCM WAV.
+- Independent batch export of timestamped UTF-8 LRC lyrics and JPG artwork, with optional automatic export during conversion.
+- Lyric preview, millisecond timing adjustment, and shared output names for audio, lyrics, and artwork.
+- Local audio information and embedded artwork; optional QQ Music metadata and album artwork lookup by an explicit song ID.
+- Convert all or selected files, retry only failed tasks, cancel cooperatively, and locate generated files.
+- Original-file protection, atomic output publication, and full decoding verification of converted audio.
 
-## 输出格式与命名
+## Quick start
 
-| 预设 | 输出参数 | 适用情景 |
+1. Add files or a folder. Folder scanning covers only the selected directory, not its subdirectories. `Ctrl+O` also opens the file picker.
+2. Choose an output directory and an MP3 or WAV preset.
+3. Optionally enable automatic lyric or artwork export. Both options are off by default.
+4. Convert the entire queue, or select one or more rows and convert only those files.
+5. Open the output folder, or right-click a song to locate a generated file.
+
+Lyrics and artwork can also be exported independently: select one or more songs and use the corresponding buttons.
+Audio, lyric, and artwork results are tracked separately. Retrying failed lyrics or artwork does not re-encode successful audio.
+Stopping preserves completed files and cleans up temporary output. A blocking network call may need to return or time out before cancellation takes effect.
+
+| Chinese interface label | Meaning |
+| --- | --- |
+| 添加文件 / 添加文件夹 | Add files / Add folder |
+| 选择位置 | Choose output directory |
+| 高质量 MP3 / 开发板 WAV | High-quality MP3 / Embedded-player WAV preset |
+| 转换全部 / 转换选中 | Convert all / Convert selected |
+| 导出歌词 / 保存封面 | Export lyrics / Save artwork |
+| 重试失败项 / 停止 | Retry failed tasks / Stop |
+| 打开输出文件夹 | Open output folder |
+| 名称与歌曲信息 | Output name and song information; double-click one song to open |
+| 歌词预览与偏移 | Lyric preview and timing adjustment |
+| 获取歌词预览（联网） | Fetch lyric preview (online) |
+| 保存预览为同名 LRC / 应用设置 | Save preview as LRC / Apply settings |
+| 转换后自动导出歌词 / 转换后保存封面 | Automatically export lyrics / artwork during conversion |
+| 使用本机 QQ 音乐登录状态处理加密歌曲 | Opt in to the local QQ Music login adapter for encrypted audio |
+| 覆盖已有同名音频（歌词与封面不覆盖） | Overwrite existing audio; LRC/JPG files remain protected |
+
+## Output presets and filenames
+
+| Preset | Output | Typical use |
 | --- | --- | --- |
-| 高质量 MP3 | VBR；保持输入采样率和单/双声道 | 通用播放；MP3 本身为有损格式 |
-| 开发板 WAV | RIFF/WAVE PCM，48000 Hz，16-bit，双声道 | DMA / I2S / SD 卡播放器 |
+| MP3 | High-quality VBR; original sample rate and mono/stereo channel count | General playback |
+| WAV | RIFF/WAVE PCM, 48,000 Hz, 16-bit, stereo | DMA / I2S / SD-card players |
 
-WAV 预设使用 SoXR HQ 流式重采样，单声道复制到左右声道，限幅后写入 PCM16；
-不会只改文件头或直接丢弃样本。每次转换均完整解码校验输出参数和时长。
-单声道复制不会创造立体声效果；WAV 转换不会提高已有录音的音质。
-48 kHz 双声道 PCM16 每秒约 192000 字节，一首 4 分钟歌曲约 46 MB。
-不支持多声道下混；MP3 预设支持 8 / 11.025 / 12 / 16 / 22.05 / 24 / 32 / 44.1 / 48 kHz。
+The WAV preset uses SoXR HQ streaming resampling, duplicates mono audio into both channels, and clips samples to the PCM16 range.
+Every conversion fully decodes the output to verify its parameters and duration. Duplicating mono does not create a stereo recording, and conversion does not improve the source recording's quality.
+Stereo PCM16 at 48 kHz uses about 192,000 bytes per second, or 46 MB for four minutes. Multichannel downmixing is not supported.
+The MP3 preset accepts 8 / 11.025 / 12 / 16 / 22.05 / 24 / 32 / 44.1 / 48 kHz; MP3 encoding is lossy.
 
-双击单首歌曲，在“名称与歌曲信息”设置统一名称，例如 `track01`，可生成：
+Double-click a song and set a shared filename without an extension, such as `track01`. Outputs use that name:
 
-- `track01.mp3` 或 `track01.wav`
+- `track01.mp3` or `track01.wav`
 - `track01.lrc`
 - `track01.jpg`
 
-默认沿用源文件名，不会自动改名或按歌名猜测版本。名称不能包含路径或 Windows 禁用字符。
-同一批次重名会在开始前提示。音频覆盖选项不适用于 LRC/JPG；已有歌词或封面需另选名称/目录。
-输出不能覆盖队列中的任何原音频。设置的歌曲链接、名称、偏移仅在本次运行期间有效。
+The source filename is used by default. Names cannot contain paths or Windows-reserved characters.
+Duplicate output names are rejected before a batch starts. Audio overwrite settings do not apply to LRC/JPG files: choose another name or folder if those files already exist.
+Output cannot replace any original audio file in the queue. Song links, custom names, and timing adjustments last only for the current application session.
 
-## 歌词与时间戳
+## Lyrics and timestamps
 
-支持的 musicex v1 文件会自动读取歌曲编号。普通 MP3/OGG/WAV/FLAC 没有可识别编号时，
-双击歌曲填写 QQ 音乐歌曲详情页链接，或 14 位 songmid。
-支持 `https://y.qq.com/n/ryqq/songDetail/歌曲编号` 等详情页地址；短分享链接需先在浏览器打开后复制详情页地址。
-不做同名歌曲自动搜索，避免现场版、录音室版、剪辑版时间轴混淆。
+Supported `musicex` v1 files provide a song ID automatically. For ordinary MP3/OGG/WAV/FLAC files without an identifiable ID, double-click the song and enter its QQ Music song-detail URL or 14-character `songmid`.
+Supported links include `https://y.qq.com/n/ryqq/songDetail/SONGMID`. Open shortened share links in a browser first, then copy the song-detail URL.
+The application does not guess a match from the filename: live recordings, studio recordings, and edits can have different timelines.
 
-在“歌词预览与偏移”点击获取歌词，可查看逐行时间戳。偏移单位为毫秒：正值延后，负值提前；
-调整后立即刷新预览，保存或后续批量导出均使用该偏移，范围 ±600000 ms。
-导出格式为 UTF-8 LRC，时间点为 `[分:秒.百分秒]`。重复时间点展开，原始 offset 会先应用。
-这是在线获取已有歌词，不是声音转写；无歌词、纯文本歌词、接口不可用时会明确提示，不生成虚假时间点。
-目前不导出逐字卡拉 OK 时间点和翻译轨。不同音频版本仍需用户核对同步效果。
+In the lyric preview tab, fetch lyrics and adjust timing in milliseconds. **Positive values delay lyrics; negative values advance them.**
+The preview updates immediately; saving or batch export applies the same adjustment. The range is ±600,000 ms.
+LRC files use UTF-8 and `[mm:ss.xx]` timestamps. Repeated timestamps are expanded, and the source LRC offset is applied before the user adjustment.
+Original LRC offset tags use their own convention: a positive tag advances lyrics. Exported files contain adjusted timestamps rather than an offset tag.
 
-## 封面与歌曲信息
+Lyrics are retrieved from an online service, not transcribed from audio. Missing lyrics, untimed text, and unavailable services produce an error instead of fabricated timestamps.
+Word-level karaoke timing and translated lyric tracks are not exported. Check synchronization against the exact audio version being played.
 
-封面优先读取普通文件的内嵌图片：MP3/WAV 的 APIC、FLAC 图片块、OGG 的 metadata_block_picture。
-找不到内嵌封面时，若已有歌曲编号，则向 QQ 音乐读取专辑信息并获取专辑封面。
-加密文件无需再次解密即可按歌曲编号获取在线封面；无编号时会提示填写链接。
-保存为独立 JPG，保留图像尺寸并移除附带元数据；不是向输出 MP3 写入封面。
-最大下载 12 MiB，最大解码 1600 万像素。网络封面质量取决于服务提供的专辑图片。
+## Artwork and song information
 
-歌曲信息显示时长、标题、歌手、专辑以及可读的采样率、声道、格式、编码。
-普通文件读取本地信息；加密文件点击读取时查询在线歌曲信息，转换成功后显示输出音频的技术参数。
-不为尚未解密的文件猜测采样率或声道。
+Artwork export first checks ordinary files for embedded images: MP3/WAV APIC frames, FLAC picture blocks, or OGG `metadata_block_picture` tags.
+If no usable image is found and a song ID is available, it fetches QQ Music album information and artwork. Encrypted files can use their song ID without being decrypted again.
+Images are exported as separate JPG files, preserving dimensions and removing attached metadata; artwork is not embedded into the output MP3.
+Downloads are limited to 12 MiB and decoding to 16 million pixels. Online image quality depends on the artwork supplied by the service.
 
-## 输入支持与隐私
+Song information includes duration, title, artist, album, and available sample rate, channels, format, and encoding.
+Ordinary files are inspected locally. Reading information for encrypted files explicitly queries online song metadata; after conversion, technical parameters describe the output audio.
+The application does not guess technical parameters for audio it has not decoded.
 
-| 输入 | 支持情况 |
+## Input support and privacy
+
+| Input | Support |
 | --- | --- |
-| 普通 OGG / WAV / FLAC / MP3 | libsndfile 可解码的单/双声道文件 |
-| musicex v1 尾部的 QMC2 | 实验性支持；通常为新版 MGG/MFLAC，需要匹配歌曲的密钥 |
-| 旧 QMC、其他尾部版本 | 不支持；后缀相同不保证兼容 |
+| Ordinary OGG / WAV / FLAC / MP3 | Mono or stereo files supported by libsndfile |
+| QMC2 with a musicex v1 footer | Experimental; commonly newer MGG/MFLAC files, requiring the matching song key |
+| Older QMC or other footer versions | Unsupported; a matching extension does not guarantee compatibility |
 
-普通转换、内嵌封面读取、本地信息读取均离线。
-用户选择在线歌词、缺失封面补全或在线歌曲信息时，才向 QQ 音乐发送歌曲编号/专辑编号，
-不上传音频、歌词、本机文件名或路径，也不读取登录会话。
-相关在线接口不是本项目提供的服务，可能因权限、下架或接口调整失效。
+Ordinary conversion, local metadata inspection, and embedded-artwork extraction work offline.
+Requested online lyrics, artwork fallback, and song information send only song/album IDs to QQ Music.
+These operations do not upload audio, lyrics, local filenames, or paths, and do not read login sessions.
+Online services may become unavailable because of permissions, removed content, or API changes.
 
-加密音频转换的“使用本机 QQ 音乐登录状态”默认关闭。
-主动启用时，适配器只读扫描 QQMusic 进程可读内存中的 authst 字段，读取 QQ 音乐账户编号，
-并向官方 `u.y.qq.com` 密钥接口发送会话、账户、文件内歌曲标识和文件名。
-一次批次复用会话，结束清空引用；不保存凭据或密钥、不输出敏感响应。仅处理你有权访问和转换的本地文件。
-完整边界、读取预算和超时见 [隐私说明](docs/PRIVACY.md)。
+The optional login adapter for encrypted audio is **off by default**.
+When explicitly enabled, it reads QQMusic process memory to find `authst`, reads the account number from QQ Music configuration,
+and sends the session, account, embedded song ID, and embedded filename to the official `u.y.qq.com` key endpoint.
+Sessions are reused within a batch and references cleared afterward; credentials and keys are not saved or logged.
+Only process local files that you are authorized to access and convert. See [Privacy](docs/PRIVACY.md) for exact limits and data flows.
 
-软件只保存输出目录，没有遥测、自动更新或第三方日志服务。
-原音频、真实歌词、封面、账户、密钥、本机配置与个人路径均不进入公开源码和发行包。
+Only the output directory is persisted. There is no telemetry, automatic updater, or third-party logging service.
+Release packages contain application files, documentation, licenses, and synthetic test fixtures; no real music, lyrics, artwork, credentials, or user configuration is distributed.
 
-## 源码运行与构建
+## Run from source or build
 
-Windows x64，Python 3.12（带 Tcl/Tk）；本地构建使用 Python 3.12.14。
+Use Windows x64 and Python 3.12 with Tcl/Tk. Local validation used Python 3.12.14.
 
 ```powershell
 python -m venv .venv
@@ -100,47 +127,48 @@ python -m venv .venv
 .venv\Scripts\python scripts/build_release.py
 ```
 
-构建脚本依次运行离线回归、收集许可证、生成图标、打包 EXE、执行便携 EXE 自测，并生成：
+The build script runs offline regression tests, collects licenses, generates the icon, builds the EXE, and runs a portable EXE smoke test. It produces:
 
 - `dist/QQMusicConverter.exe`
 - `release/QQMusicConverter-0.3.0-beta.1-windows-x64.zip`
 - `release/QQMusicConverter-0.3.0-beta.1-source.zip`
 - `release/SHA256SUMS.txt`
 
-便携自测将 EXE 复制到独立临时目录，移除 Python 环境变量并将 PATH 限制为 Windows 系统目录，
-测试 MP3、WAV、内嵌封面、LRC、Tk 运行库。CI 在独立 Windows runner 上执行同一套构建与自测。
-这验证了自带运行时，不等于在所有无 Python Windows 10/11 真机上验收。
+The portable test copies the EXE to a separate temporary directory, removes Python environment variables, and restricts PATH to the Windows system directory.
+It exercises MP3, WAV, embedded artwork, LRC, and Tk. CI runs the same flow on a separate Windows runner.
+This checks the bundled runtime; it is not exhaustive testing on clean Windows 10/11 physical machines.
 
-可选 CLI：`python convert_music.py input.ogg -o output --profile wav`。
-加密文件仍可选 `--qq-login` 或单首文件自己的 `--ekey-file`，不要上传密钥。
+Optional CLI: `python convert_music.py input.ogg -o output --profile wav`.
+Encrypted files may use `--qq-login` or `--ekey-file` for that individual song's key. Never upload key files.
 
-## 代码结构
+## Project structure
 
-| 文件 | 职责 |
+| Module | Responsibility |
 | --- | --- |
-| music_gui.py / ui_theme.py | 主窗口、样式、缩放与固定底部操作 |
-| music_workspace.py | 队列交互、歌曲设置、歌词预览，主线程更新控件 |
-| tasks.py / job.py | 后台任务、独立结果、进度、取消与会话生命周期 |
-| convert_music.py | 读取输入、MP3/WAV 编码、流式重采样、完整校验 |
-| lyrics.py | 编号读取、在线歌词、时间戳归一化与偏移 |
-| media_assets.py | 本地信息、内嵌封面、在线歌曲/专辑信息、图片导出 |
-| output_files.py | 统一命名与原子文件发布 |
-| qmc_core.py / qq_session.py | QMC 解码与可选登录适配 |
-| settings.py | 仅持久化输出目录 |
+| music_gui.py / ui_theme.py | Main window, styling, scaling, and fixed bottom actions |
+| music_workspace.py | Queue interaction, song settings, lyric preview, main-thread widget updates |
+| tasks.py / job.py | Background jobs, independent results, progress, cancellation, session lifecycle |
+| convert_music.py | Input handling, MP3/WAV encoding, streaming resampling, full verification |
+| lyrics.py | Song IDs, lyric retrieval, timestamp normalization and adjustment |
+| media_assets.py | Local metadata, embedded artwork, online song/album information, image export |
+| output_files.py | Shared naming and atomic file publication |
+| qmc_core.py / qq_session.py | QMC decoding and optional login adapter |
+| settings.py | Output-directory persistence only |
 
-## 验证与已知限制
+## Validation and limitations
 
-测试使用合成音频、图片、歌词和模拟服务，不请求真实账户，也不访问在线接口。
-覆盖重采样时长/音高/抗混叠、跨块连续性、独立失败重试、取消、文件保护和多档缩放布局。
-线上实测与 EXE 验收单独记录在 [发行验收记录](docs/RELEASE_CHECKS.md)。
-本版为未签名测试版；在线接口和客户端适配不保证长期兼容。
-不内置音频试听，歌词预览为时间轴文本；用户仍需在目标播放器核对同步效果。
-CI 只测试和构建，不自动公开发布 Release。
+Tests use generated audio, images, lyrics, and mocked services. They do not access live accounts or online endpoints.
+Coverage includes resampling duration/pitch/anti-aliasing, chunk continuity, independent retries, cancellation, file protection, and multiple display scales.
+See [Validation](docs/RELEASE_CHECKS.md) for separate live-service and executable checks.
 
-## 许可证
+This is an unsigned beta. Online APIs and client adapters are not guaranteed to remain compatible.
+There is no built-in audio preview: lyric preview shows timestamped text, and synchronization should be checked on the target player.
+The GUI is currently Simplified Chinese. CI builds artifacts but does not automatically publish a public release.
 
-本项目 GPL-3.0；发行包附对应源码、构建脚本和第三方许可证。
-解码移植参考 [qmc-decoder](https://github.com/ownlight6/qmc-decoder) 与
-[tc_tea](https://github.com/jixunmoe/tc_tea_rust)，保留上游授权和署名。
-依赖来源、原生库替换与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
-本项目非 QQ 音乐官方产品。
+## License
+
+GPL-3.0. Release packages include application source, build scripts, and third-party notices.
+The decoding port references [qmc-decoder](https://github.com/ownlight6/qmc-decoder) and [tc_tea](https://github.com/jixunmoe/tc_tea_rust), retaining upstream attribution and licensing.
+See [Third-party notices](THIRD_PARTY_NOTICES.md) for dependency sources, native-library replacement, and licenses.
+
+This project is not an official QQ Music product and is not affiliated with Tencent.

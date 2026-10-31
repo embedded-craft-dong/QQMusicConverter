@@ -1,56 +1,60 @@
-# 数据处理说明
+# Data handling and privacy
 
-## 普通音频
+**English** | [简体中文](PRIVACY.zh-CN.md)
 
-读取用户选中的本地音频，将 MP3 或 PCM WAV 写到所选目录，不请求网络、不扫描进程。
-输出先写临时文件，通过完整解码校验后发布；取消或失败时清理临时文件。
+## Ordinary audio
 
-## 主动导出歌词
+Selected local audio is read and converted to MP3 or PCM WAV in the chosen directory. Conversion does not access the network or inspect other processes.
+Output is written to a temporary file and fully decoded for verification before publication. Cancellation and errors clean up temporary files.
 
-点击“导出歌词”“获取歌词预览”，或启用自动导词并开始转换后，向 `https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg`
-提交歌曲 songmid。编号来自所选文件的有界 musicex 元数据，或用户输入的 QQ 音乐歌曲详情链接。
-不上传音频、歌词文件、本机路径或文件名，不读取客户端进程、账户或 Cookie。
-只保存所请求的 UTF-8 LRC，不自动保存歌曲编号或歌词查询历史。
-歌词响应最多 1 MiB，网络阻塞超时 8 秒，读取循环设有 15 秒期限及取消检查。
+## Requested lyrics
 
-## 封面与歌曲信息
+Clicking Export lyrics or Fetch lyric preview, or starting conversion with automatic lyrics enabled, sends the song's `songmid` to:
+`https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg`.
+The ID comes from bounded musicex metadata or a QQ Music detail link supplied by the user.
 
-普通音频的标签、技术参数和内嵌封面从本地读取，不请求网络。
-保存封面时若缺少内嵌图片且已设置歌曲编号，或主动读取加密歌曲信息时，向
-`https://u.y.qq.com/cgi-bin/musicu.fcg` 的歌曲详情接口提交 songmid（无登录字段）。
-专辑编号用于请求 `https://y.gtimg.cn/music/photo_new/` 下的专辑封面。
-不上传音频或本地路径，不读取客户端进程/账户/Cookie。
-歌曲信息响应最多 1 MiB，封面最多 12 MiB，单次阻塞超时 8 秒，读取循环期限 20 秒。
-图片解码上限 1600 万像素，输出 JPG 不保留原图片的 EXIF 等附带元数据。
-歌词/封面的自动处理选项每次启动默认关闭；歌曲链接、统一名称和偏移仅在内存中保存。
+Audio, lyric files, local paths, and filenames are not uploaded. This feature does not read client processes, accounts, or cookies.
+Only the requested UTF-8 LRC is saved; song IDs and query history are not automatically persisted.
+Responses are limited to 1 MiB. Blocking network calls time out after 8 seconds; the read loop has a 15-second deadline and cancellation checks.
 
-## 可选音频解码登录适配
+## Artwork and song information
 
-每次启动默认关闭。启用并实际转换加密文件时：
+Ordinary-file tags, technical parameters, and embedded artwork are read locally without network requests.
+When artwork is missing and a song ID is available, or online information is explicitly requested for encrypted audio,
+the song ID is submitted to the song-detail method at `https://u.y.qq.com/cgi-bin/musicu.fcg`, without login fields.
+The returned album ID is used to request artwork under `https://y.gtimg.cn/music/photo_new/`.
 
-1. 在当前用户的 QQMusic 配置中读取账户编号。
-2. 查找运行中的 QQMusic 进程，以只读权限扫描可读内存中的 ASCII/UTF-16 `authst` 字段。
-   这会读取包含会话字段以外的数据的内存块；仅提取匹配字段，不保存内存转储。
-3. 通过 HTTPS 将会话、账户编号、文件内歌曲标识和文件名提交到 QQ 音乐的 `u.y.qq.com` 接口。
-   音频文件本身不上传。
-4. 密钥用于本首歌曲还原，不写入磁盘；会话候选在单次任务内复用，结束后清空引用。
+No audio or local paths are uploaded, and client processes, accounts, and cookies are not read.
+Song-information responses are limited to 1 MiB and artwork to 12 MiB. Blocking calls time out after 8 seconds; read loops have a 20-second deadline.
+Image decoding is limited to 16 million pixels. Exported JPGs omit EXIF and other attached source-image metadata.
+Automatic lyric/artwork processing is off at startup. Song links, shared names, and timing adjustments stay in memory only.
 
-Python 的引用清理不等于可验证的物理内存擦除。本程序不宣称安全擦除内存。
-不输出网络响应、会话、密钥或包含它们的异常追踪；不申请提权、不修改目标进程。
-无法读取进程时提示失败，用户可以使用普通音频或单文件 CLI 的外部密钥选项。
-故障报告不应包含配置文件、内存转储、会话、密钥或受版权保护的歌曲。
+## Optional login adapter for encrypted audio
 
-## 限制
+This option is off at startup. When explicitly enabled and encrypted audio is converted, the adapter:
 
-查找进程的 PowerShell 子进程最多等待 5 秒。
-扫描循环最多 12 秒、最多尝试读取 512 MiB（包括失败的尝试和重叠字节）。
-每个块检查取消；一次 OS 调用期间无法抢占。
-取密钥最多使用 3 个会话，25 秒请求期限在请求/读取循环中检查；单次网络阻塞超时最多 8 秒。
-期限是协作检查，不是强制杀线程；网络/系统调用的完成时间可能超出检查点。
-取消不会中断已提交的输出文件，不会删除其他已完成文件。
+1. Reads the account number from the current user's QQMusic configuration.
+2. Locates QQMusic processes and scans readable memory for ASCII/UTF-16 `authst` fields using read-only access. Memory blocks also contain unrelated data; only matching session fields are extracted, and no memory dump is saved.
+3. Sends the session, account number, embedded song ID, and embedded filename over HTTPS to QQ Music's `u.y.qq.com` key endpoint. Audio content itself is not uploaded.
+4. Uses the returned key for the individual song without writing it to disk. Session candidates are reused within one batch and references are cleared when it finishes.
 
-## 本地设置
+Clearing Python references is not verifiable physical memory erasure; the application does not claim secure erasure.
+Network responses, sessions, keys, and tracebacks containing them are not printed. The adapter does not elevate privileges or modify the target process.
+If session access fails, ordinary audio remains usable; the CLI also supports an external key file for an individual song.
+Do not include configuration files, memory dumps, sessions, keys, or copyrighted music in bug reports.
 
-只保存输出目录到 `%LOCALAPPDATA%/QQMusicConverter/settings.json`。
-不保存登录选项、覆盖选项、待转换文件列表、账户或密钥。
-程序无遥测、第三方日志服务或自动更新。文件选择对话框可能由 Windows 自行维护最近使用记录。
+## Limits and cancellation
+
+- The PowerShell process lookup waits at most 5 seconds.
+- Memory scanning has a 12-second loop deadline and a 512 MiB attempted-read budget, including failed reads and overlapping bytes.
+- Cancellation is checked between blocks; a running OS call cannot be preempted.
+- Key requests try at most three session candidates, with a 25-second request/read-loop deadline and blocking calls limited to 8 seconds.
+
+Deadlines are cooperative checks, not forced thread termination. A network or OS call may finish after the next intended check point.
+Cancellation does not interrupt an already committed output or delete other completed files.
+
+## Local settings
+
+Only the output directory is saved, in `%LOCALAPPDATA%/QQMusicConverter/settings.json`.
+Login and overwrite options, the file queue, accounts, and keys are not persisted.
+There is no telemetry, third-party logging service, or automatic updater. Windows file dialogs may maintain their own recently used file history.
