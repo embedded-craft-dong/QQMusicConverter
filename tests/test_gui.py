@@ -16,7 +16,8 @@ from test_converter import tone
 class GuiTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
-        self.folder=Path(self.temp.name)
+        # Windows CI may return an 8.3 TEMP path; match the GUI's resolved IDs.
+        self.folder=Path(self.temp.name).resolve()
         self.root=gui.tk.Tk();self.root.withdraw();self.addCleanup(self.root.destroy)
         self.app=gui.App(self.root,settings_file=self.folder/'settings.json')
         self.app.output.set(str(self.folder/'output'))
