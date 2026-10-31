@@ -68,6 +68,17 @@ def install(root, scale):
     style.configure('TEntry', fieldbackground=FIELD, foreground=TEXT, insertcolor=ACCENT,
                     bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER, padding=p(9))
     style.map('TEntry', bordercolor=[('focus',ACCENT)], fieldbackground=[('disabled','#14202a')])
+    for widget in ('TCombobox','TSpinbox'):
+        style.configure(widget,fieldbackground=FIELD,background='#263747',foreground=TEXT,
+                        arrowcolor=ACCENT,bordercolor=BORDER,padding=p(6))
+        style.map(widget,fieldbackground=[('readonly',FIELD),('disabled','#14202a')],
+                  foreground=[('disabled','#718696'),('readonly',TEXT)])
+    style.configure('TNotebook',background=BG,borderwidth=0)
+    style.configure('TNotebook.Tab',background='#20303e',foreground=MUTED,padding=(p(14),p(9)))
+    style.map('TNotebook.Tab',background=[('selected',PANEL)],foreground=[('selected',ACCENT)])
+    root.option_add('*TCombobox*Listbox.background',FIELD)
+    root.option_add('*TCombobox*Listbox.foreground',TEXT)
+    root.option_add('*TCombobox*Listbox.selectBackground','#284b4b')
     style.configure('Treeview', background=PANEL, fieldbackground=PANEL, foreground=TEXT,
                     rowheight=p(40), borderwidth=0, font=('Microsoft YaHei UI',10))
     style.configure('Treeview.Heading', background='#20303e', foreground=MUTED, padding=(p(10),p(9)),

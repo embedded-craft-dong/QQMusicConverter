@@ -12,6 +12,9 @@ are included with each release, and no music, user credentials or song keys are 
 | soundfile 0.13.1 | Audio wrapper; BSD-3-Clause | https://github.com/bastibe/python-soundfile/tree/0.13.1 |
 | libsndfile 1.2.2 | Native audio codec library; LGPL-2.1-or-later | https://github.com/libsndfile/libsndfile/tree/1.2.2 |
 | NumPy | Array operations; BSD-3-Clause and bundled component notices | https://github.com/numpy/numpy |
+| Python-SoXR / libsoxr / PFFFT | Streaming resampling; BSD-3-Clause / LGPL-2.1-or-later / bundled FFT notices | https://github.com/dofuuz/python-soxr |
+| Mutagen | Local audio metadata and embedded artwork; GPL-2.0-or-later | https://github.com/quodlibet/mutagen |
+| Pillow | Artwork decoding and JPEG export; MIT-CMU and bundled component notices | https://github.com/python-pillow/Pillow |
 | CFFI / pycparser | Native library access; MIT / BSD-3-Clause | https://github.com/python-cffi/cffi / https://github.com/eliben/pycparser |
 | Python / Tcl / Tk | Runtime and native GUI; PSF and component licenses | https://www.python.org/ / https://www.tcl.tk/ |
 | PyInstaller | Build tool, GPL-2.0 with bootloader exception / selected Apache-2.0 files | https://pyinstaller.org/en/stable/license.html |
@@ -40,6 +43,13 @@ Its native-library submodule is
 https://github.com/bastibe/libsndfile-binaries/tree/a3e6f9769d0c7e91d2d036cf0fdbe5b4bbf18b87
 which provides the native build recipe, dependency versions and upstream sources.
 Runtime DLLs are bundled unmodified from the installed wheel.
+
+The Python-SoXR wheel bundles libsoxr. Corresponding wrapper, native source references,
+and build configuration are at https://github.com/dofuuz/python-soxr/tree/v1.1.0 .
+Its libsoxr and PFFFT notices are copied from the wheel into `licenses/soxr/`.
+Pillow's wheel license file includes notices for its bundled image libraries.
+To replace these native components, build the dependency from its upstream source,
+install the rebuilt wheel into the build environment, and rebuild this application.
 
 To use a modified library, rebuild it using the upstream recipe, replace the
 library in your build environment's `_soundfile_data` package, then rebuild the

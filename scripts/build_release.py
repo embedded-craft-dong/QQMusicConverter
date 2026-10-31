@@ -11,7 +11,8 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from music_gui import VERSION
 
-SOURCE_FILES=('music_gui.py','ui_theme.py','convert_music.py','qmc_core.py','qq_session.py','job.py','settings.py',
+SOURCE_FILES=('music_gui.py','music_workspace.py','tasks.py','media_assets.py','output_files.py','frozen_smoke.py',
+              'ui_theme.py','convert_music.py','qmc_core.py','qq_session.py','job.py','settings.py','lyrics.py',
               'requirements.txt','requirements-build.txt','README.md','CHANGELOG.md','LICENSE',
               'THIRD_PARTY_NOTICES.md','.gitignore','.gitattributes')
 SOURCE_DIRS=('scripts','tests','docs','assets','licenses','.github')
@@ -42,10 +43,10 @@ def main():
     for folder in (dist,build,release):folder.mkdir(exist_ok=True)
     version_file=build/'version_info.txt'
     version_file.write_text("""VSVersionInfo(
-      ffi=FixedFileInfo(filevers=(0,1,0,1),prodvers=(0,1,0,1),mask=0x3f,flags=2,OS=0x40004,fileType=1,subtype=0,date=(0,0)),
+      ffi=FixedFileInfo(filevers=(0,3,0,1),prodvers=(0,3,0,1),mask=0x3f,flags=2,OS=0x40004,fileType=1,subtype=0,date=(0,0)),
       kids=[StringFileInfo([StringTable('040904b0',[
-        StringStruct('FileDescription','Music to MP3'),StringStruct('FileVersion','0.1.0-beta.1'),
-        StringStruct('ProductName','QQMusicConverter'),StringStruct('ProductVersion','0.1.0-beta.1'),
+        StringStruct('FileDescription','Music Asset Workbench'),StringStruct('FileVersion','0.3.0-beta.1'),
+        StringStruct('ProductName','QQMusicConverter'),StringStruct('ProductVersion','0.3.0-beta.1'),
         StringStruct('OriginalFilename','QQMusicConverter.exe'),StringStruct('LegalCopyright','GPL-3.0; see included notices')])]),
         VarFileInfo([VarStruct('Translation',[1033,1200])])])
 """,encoding='utf-8')
@@ -55,6 +56,7 @@ def main():
         '--add-data',str(ROOT/'assets')+';assets','--add-data',str(ROOT/'licenses')+';licenses',
         '--add-data',str(ROOT/'LICENSE')+';.','--add-data',str(ROOT/'THIRD_PARTY_NOTICES.md')+';.',
         '--icon',ROOT/'assets/app.ico','--version-file',version_file,ROOT/'music_gui.py')
+    run('scripts/smoke_exe.py',dist/'QQMusicConverter.exe')
     package_release()
 
 

@@ -1,21 +1,22 @@
 """Native Windows UI. All widget access stays on the Tk thread."""
 import os
+import sys
 from pathlib import Path
 import queue
 import threading
-import time
-from types import SimpleNamespace
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import convert_music as engine
-from job import Cancelled, SessionCache
+import lyrics
 from settings import load_output, save_output
 from ui_theme import BG, PANEL, TEXT, MUTED, ACCENT, install
 
-VERSION = '0.1.0-beta.1'
+from music_workspace import Workspace
+
+VERSION = '0.3.0-beta.1'
 
 
-class App:
+class App(Workspace):
     def __init__(self, root, settings_file=None):
         self.root, self.settings_file = root, settings_file
         self.files, self.failed_files = [], set()
@@ -27,7 +28,7 @@ class App:
         self.scale = max(1.0, root.winfo_fpixels('1i') / 96)
         self.p = lambda value: round(value * self.scale)
         p = self.p
-        root.title('音乐转 MP3 · '+VERSION)
+        root.title('音乐素材工作台 · '+VERSION)
         root.configure(bg=BG)
         icon=Path(__file__).resolve().parent/'assets/app.png'
         if icon.is_file():
@@ -49,8 +50,10 @@ class App:
         self.progress.pack(fill='x',pady=(0,p(14)))
         actions = ttk.Frame(footer)
         actions.pack(fill='x')
-        self.go = ttk.Button(actions,text='开始转换  →',style='Go.TButton',command=self.start)
+        self.go = ttk.Button(actions,text='转换全部  →',style='Go.TButton',command=self.start)
         self.go.pack(side='left')
+        self.selected_button=ttk.Button(actions,text='转换选中',command=lambda:self.start(self.selected()),state='disabled')
+        self.selected_button.pack(side='left',padx=(p(8),0))
         self.cancel = ttk.Button(actions,text='停止',command=self.request_stop,state='disabled')
         self.cancel.pack(side='left',padx=p(8))
         self.open_button = ttk.Button(actions,text='打开输出文件夹',command=self.open_folder)
@@ -77,8 +80,8 @@ class App:
         title.pack(side='left')
         ttk.Label(title,text='AUDIO  /  CONVERTER',style='Eyebrow.TLabel').pack(anchor='w')
         ttk.Label(title,text='让音乐，自由随行。',style='Title.TLabel').pack(anchor='w',pady=(p(4),p(6)))
-        ttk.Label(title,text='批量转为高质量 MP3，每一首都完整校验。',style='Muted.TLabel').pack(anchor='w')
-        ttk.Label(header,text='MP3  /  VBR',style='Badge.TLabel').pack(side='right',anchor='n',pady=p(12))
+        ttk.Label(title,text='音频 · 歌词 · 封面，一次准备好播放器素材。',style='Muted.TLabel').pack(anchor='w')
+        ttk.Label(header,text='MP3  /  WAV',style='Badge.TLabel').pack(side='right',anchor='n',pady=p(12))
 
         card = self.make_card(body,bottom=14)
         line = ttk.Frame(card,style='Card.TFrame')
@@ -113,10 +116,16 @@ class App:
         self.empty.place(relx=.5,rely=.58,anchor='center')
         hintline = ttk.Frame(card,style='Card.TFrame')
         hintline.pack(fill='x',pady=(p(10),0))
-        ttk.Label(hintline,text='OGG · WAV · FLAC · MP3 · 部分新版 MGG',style='CardMuted.TLabel').pack(side='left')
+        ttk.Label(hintline,text='双击歌曲设置 · 支持多选',style='CardMuted.TLabel').pack(side='left')
         clear = ttk.Button(hintline,text='清空',command=self.clear)
         clear.pack(side='right')
         self.controls.append(clear)
+        self.lyric_button=ttk.Button(hintline,text='导出歌词',command=self.open_lyrics)
+        self.lyric_button.pack(side='right',padx=(0,p(8)))
+        self.controls.append(self.lyric_button)
+        self.cover_button=ttk.Button(hintline,text='保存封面',command=self.export_covers)
+        self.cover_button.pack(side='right',padx=(0,p(8)))
+        self.controls.append(self.cover_button)
 
         card = self.make_card(body)
         ttk.Label(card,text='02   输出与选项',style='Heading.TLabel').pack(anchor='w',pady=(0,p(12)))
@@ -131,9 +140,10 @@ class App:
         self.auth,self.overwrite = tk.BooleanVar(value=False),tk.BooleanVar(value=False)
         self.auth_check = ttk.Checkbutton(card,text='  使用本机 QQ 音乐登录状态处理加密歌曲',variable=self.auth,style='Music.TCheckbutton')
         self.auth_check.pack(anchor='w',pady=(p(2),p(4)))
-        self.overwrite_check = ttk.Checkbutton(card,text='  覆盖输出目录中已有的同名 MP3',variable=self.overwrite,style='Music.TCheckbutton')
+        self.overwrite_check = ttk.Checkbutton(card,text='  覆盖已有同名音频（歌词与封面不覆盖）',variable=self.overwrite,style='Music.TCheckbutton')
         self.overwrite_check.pack(anchor='w')
         self.controls.extend([self.auth_check,self.overwrite_check])
+        self.setup_workspace(card)
         note = ttk.Frame(card,style='Card.TFrame')
         note.pack(fill='x',pady=(p(10),0))
         self.note = ttk.Label(note,text='普通音频无需登录。加密歌曲需先打开并登录 QQ 音乐；会扫描其可读内存查找会话，\n仅向 QQ 音乐接口请求密钥，不保存凭据。',style='CardMuted.TLabel',justify='left')
@@ -195,7 +205,7 @@ class App:
             self.empty.place_forget()
         else:
             self.empty.place(relx=.5,rely=.58,anchor='center')
-        self.retry.configure(state='normal' if self.failed_files and not self.busy else 'disabled')
+        self.refresh_actions()
 
     def insert(self,paths):
         if self.busy:return
@@ -229,128 +239,23 @@ class App:
         for item in self.tree.selection():
             path=Path(item)
             self.files.remove(path);self.failed_files.discard(path);self.tree.delete(item)
+            self.asset_failures={pair for pair in self.asset_failures if pair[0]!=path}
+            for mapping in (self.song_options,self.results,self.outputs,self.information):mapping.pop(path,None)
         self.refresh_count()
 
     def clear(self):
         if self.busy:return
-        self.files.clear();self.failed_files.clear()
+        self.files.clear();self.failed_files.clear();self.asset_failures.clear()
+        for mapping in (self.song_options,self.results,self.outputs,self.information):mapping.clear()
         for item in self.tree.get_children():self.tree.delete(item)
         self.refresh_count()
 
     def choose_output(self):
         if self.busy:return
-        folder=filedialog.askdirectory(parent=self.root,title='选择 MP3 保存位置')
+        folder=filedialog.askdirectory(parent=self.root,title='选择音频与素材保存位置')
         if folder:
             self.output.set(folder)
             save_output(folder,self.settings_file)
-
-    def show_detail(self,event=None):
-        if self.tree.selection():
-            item=self.tree.selection()[0]
-            messagebox.showinfo('歌曲详情',item+'\n\n'+self.tree.set(item,'status'),parent=self.root)
-
-    def retry_failed(self):
-        self.start(tuple(p for p in self.files if p in self.failed_files))
-
-    def start(self,files=None):
-        if self.busy:return
-        files=tuple(self.files) if files is None else files
-        if not files:
-            messagebox.showinfo('添加歌曲','请先添加文件或文件夹。',parent=self.root);return
-        if not self.output.get().strip():
-            messagebox.showinfo('选择保存位置','请选择 MP3 保存文件夹。',parent=self.root);return
-        if any(p.suffix.lower() in engine.ENCRYPTED for p in files) and not self.auth.get():
-            messagebox.showinfo('加密歌曲需要登录状态','请先登录 QQ 音乐，再勾选“使用本机 QQ 音乐登录状态”。',parent=self.root);return
-        names=[p.stem.casefold() for p in files]
-        if len(names)!=len(set(names)):
-            messagebox.showerror('有同名输出','请将同名歌曲分别转换到不同文件夹。',parent=self.root);return
-        try:
-            folder=Path(self.output.get()).expanduser().resolve()
-        except (OSError,ValueError):
-            messagebox.showerror('路径无效','请选择有效的输出目录。',parent=self.root);return
-        self.busy=True;self.stop.clear();self.result_folder=folder;self.batch=files
-        save_output(folder,self.settings_file)
-        for widget in self.controls+[self.go,self.retry]:widget.configure(state='disabled')
-        self.cancel.configure(state='normal')
-        self.progress.configure(maximum=len(files),value=0)
-        for path in files:
-            self.failed_files.discard(path)
-            self.tree.set(str(path),'status','等待转换')
-            self.tree.item(str(path),tags=('muted',))
-        self.status.set(f'正在准备 · 共 {len(files)} 首')
-        args=SimpleNamespace(output_dir=folder,overwrite=self.overwrite.get(),qq_login=self.auth.get(),
-                             ekey_file=None,cancel_event=self.stop,session_cache=SessionCache())
-        self.thread=threading.Thread(target=self.worker,args=(files,args),daemon=True)
-        self.thread.start()
-
-    def worker(self,files,args):
-        success=failed=0
-        try:
-            import numpy as np
-            import soundfile as sf
-            if 'MP3' not in sf.available_formats():raise RuntimeError('MP3 encoder unavailable')
-            for i,path in enumerate(files):
-                if self.stop.is_set():break
-                last=[0.0,None]
-                encrypted=path.suffix.lower() in engine.ENCRYPTED
-                weights={'还原音频':(0,.25),'校验源音频':(.25,.15),
-                         '编码 MP3':(.4,.5) if encrypted else (0,.85),'验证 MP3':(.9,.1) if encrypted else (.85,.15)}
-                def progress(phase,fraction,p=path,index=i):
-                    now=time.monotonic()
-                    if now-last[0]<.08 and phase==last[1] and fraction<1:return
-                    last[:]=[now,phase]
-                    start,weight=weights[phase]
-                    self.events.put(('fraction',str(p),phase,round(fraction*100),index+start+weight*fraction,index+1,len(files)))
-                args.progress=progress
-                args.notify=lambda text,p=path:self.events.put(('phase',str(p),text,'active'))
-                self.events.put(('phase',str(path),'正在准备…','active'))
-                try:
-                    target=engine.convert(path,args,sf,np)
-                    success+=1
-                    self.events.put(('phase',str(path),'已完成 · '+target.name,'success'))
-                except Cancelled:
-                    self.events.put(('phase',str(path),'已取消 · 原件保留','muted'))
-                    break
-                except Exception as exc:
-                    failed+=1
-                    msg=str(exc) if isinstance(exc,ValueError) else ('同名 MP3 已存在，未覆盖' if isinstance(exc,FileExistsError) else '文件读取或转换失败，请检查权限和完整性')
-                    self.events.put(('phase',str(path),'失败：'+msg,'failed'))
-                self.events.put(('progress',i+1))
-            self.events.put(('done',success,failed,len(files)-success-failed))
-        except Exception:
-            self.events.put(('fatal','转换组件加载失败，请重新解压完整程序。'))
-        finally:
-            args.session_cache.clear()
-
-    def poll(self):
-        try:
-            # A busy encoder cannot monopolize the UI message loop.
-            for _ in range(100):
-                event=self.events.get_nowait()
-                if event[0]=='phase':
-                    self.tree.set(event[1],'status',event[2]);self.tree.item(event[1],tags=(event[3],))
-                    self.tree.see(event[1])
-                    if event[3]=='failed':self.failed_files.add(Path(event[1]))
-                    if not self.stop.is_set():self.status.set(Path(event[1]).name+' · '+event[2])
-                elif event[0]=='fraction':
-                    self.progress.configure(value=event[4])
-                    self.tree.set(event[1],'status',f'{event[2]} · {event[3]}%')
-                    if not self.stop.is_set():self.status.set(f'{event[5]}/{event[6]} · {Path(event[1]).name} · {event[2]} {event[3]}%')
-                elif event[0]=='progress':self.progress.configure(value=event[1])
-                elif event[0] in ('done','fatal'):
-                    self.busy=False
-                    for widget in self.controls+[self.go]:widget.configure(state='normal')
-                    self.cancel.configure(state='disabled')
-                    if event[0]=='done':
-                        self.status.set(f'处理结束 · 成功 {event[1]} 首 · 失败 {event[2]} 首 · 取消或未处理 {event[3]} 首')
-                    else:self.status.set(event[1])
-                    for path in self.batch:
-                        if self.tree.set(str(path),'status')=='等待转换':self.tree.set(str(path),'status','未处理')
-                    self.refresh_count()
-                    if self.closing:
-                        self.root.destroy();return
-        except queue.Empty:pass
-        self.poll_id=self.root.after(80,self.poll)
 
     def request_stop(self):
         if not self.busy:return
@@ -373,6 +278,9 @@ class App:
 
 
 def main():
+    if len(sys.argv)==3 and sys.argv[1]=='--self-test':
+        from frozen_smoke import run
+        raise SystemExit(run(sys.argv[2]))
     if os.name=='nt':
         import ctypes
         try:ctypes.windll.shcore.SetProcessDpiAwareness(1)

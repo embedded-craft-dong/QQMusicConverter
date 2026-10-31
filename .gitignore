@@ -23,4 +23,5 @@ mp3_output/
 *.flac
 *.mgg
 *.mflac
+*.lrc
 *.qmc*

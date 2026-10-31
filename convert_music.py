@@ -17,6 +17,7 @@ import tempfile
 import urllib.request
 import time
 from job import Cancelled, SessionCache, checkpoint, report
+from output_files import output_path, publish
 
 ENCRYPTED = {'.mgg', '.mflac', '.qmc0', '.qmcflac', '.qmcogg'}
 ORDINARY = {'.ogg', '.wav', '.flac', '.mp3'}
@@ -186,7 +187,10 @@ def convert(path, args, sf, np):
     checkpoint(args)
     folder = args.output_dir or path.parent/'mp3_output'
     folder.mkdir(parents=True, exist_ok=True)
-    target = folder/(path.stem+'.mp3')
+    wav = getattr(args, 'profile', 'mp3') == 'wav'
+    suffix = '.wav' if wav else '.mp3'
+    label = 'WAV' if wav else 'MP3'
+    target = output_path(path,folder,suffix,args)
     if target.resolve() == path.resolve():
         raise ValueError('输出不能覆盖输入文件。')
     if target.exists() and not args.overwrite:
@@ -194,39 +198,56 @@ def convert(path, args, sf, np):
     source = open_audio(path, args)
     tmp = None
     try:
-        emit(args, '正在编码 MP3…')
+        emit(args, '正在编码 '+label+'…')
         with sf.SoundFile(source) as src:
             rate, channels = src.samplerate, src.channels
-            if rate not in (8000,11025,12000,16000,22050,24000,32000,44100,48000) or channels not in (1,2):
+            if channels not in (1,2) or (not wav and rate not in (8000,11025,12000,16000,22050,24000,32000,44100,48000)):
                 raise ValueError('输入采样率或声道数不适合此 MP3 编码流程，需先重采样。')
-            fd, tmp = tempfile.mkstemp(prefix='.convert-', suffix='.mp3', dir=folder)
+            input_rate, input_channels = rate, channels
+            resampler = None
+            if wav:
+                import soxr
+                rate, channels = 48000, 2
+                if input_rate != rate:
+                    resampler = soxr.ResampleStream(input_rate,rate,channels,dtype='float32',quality='HQ')
+            fd, tmp = tempfile.mkstemp(prefix='.convert-', suffix=suffix, dir=folder)
             os.close(fd)
             frames = 0
-            with sf.SoundFile(tmp, mode='w', samplerate=rate, channels=channels,
-                              format='MP3', bitrate_mode='VARIABLE', compression_level=0.0) as dst:
+            options = dict(format='WAV',subtype='PCM_16') if wav else dict(format='MP3',bitrate_mode='VARIABLE',compression_level=0.0)
+            consumed = 0
+            with sf.SoundFile(tmp, mode='w', samplerate=rate, channels=channels, **options) as dst:
                 for block in src.blocks(blocksize=65536, dtype='float32', always_2d=True):
                     checkpoint(args)
                     if not np.isfinite(block).all():
                         raise ValueError('音频包含无效样本。')
+                    consumed += len(block)
+                    if wav:
+                        if input_channels == 1:
+                            block = np.repeat(block,2,axis=1)
+                        if resampler is not None:
+                            block = resampler.resample_chunk(block,last=consumed>=src.frames)
+                        block = np.clip(block,-1.0,32767/32768)
                     dst.write(block)
                     frames += len(block)
-                    report(args, '编码 MP3', frames / max(1, src.frames))
+                    report(args, '编码 '+label, consumed / max(1, src.frames))
             if not frames:
                 raise ValueError('音频为空。')
+            if wav and abs(frames-round(consumed*rate/input_rate))>1:
+                raise ValueError('WAV 重采样时长校验失败。')
         # Decode the entire output, not merely its file header.
         decoded = 0
-        emit(args, '正在完整解码校验 MP3…')
+        emit(args, '正在完整解码校验 '+label+'…')
         with sf.SoundFile(tmp) as check:
-            if check.format != 'MP3' or check.samplerate != rate or check.channels != channels:
-                raise ValueError('MP3 输出参数校验失败。')
+            if check.format != label or check.samplerate != rate or check.channels != channels or (wav and check.subtype!='PCM_16'):
+                raise ValueError(label+' 输出参数校验失败。')
             for block in check.blocks(blocksize=65536):
                 checkpoint(args)
                 if not np.isfinite(block).all():
                     raise ValueError('MP3 解码校验失败。')
                 decoded += len(block)
-                report(args, '验证 MP3', decoded / max(1, frames))
-        if abs(decoded-frames) > 2304:
-            raise ValueError('MP3 时长校验失败。')
+                report(args, '验证 '+label, decoded / max(1, frames))
+        if abs(decoded-frames) > (0 if wav else 2304):
+            raise ValueError(label+' 时长校验失败。')
         checkpoint(args)
         if args.overwrite:
             os.replace(tmp, target)
@@ -252,6 +273,7 @@ def main():
     group.add_argument('--qq-login', action='store_true', help='允许读取运行中 QQ 音乐的 authst 会话字段，仅发送到 QQ 音乐官方接口')
     group.add_argument('--ekey-file', type=Path, help='UTF-8 文本，包含本首歌曲的 ekey；仅单文件模式')
     parser.add_argument('--overwrite', action='store_true')
+    parser.add_argument('--profile', choices=('mp3','wav'), default='mp3', help='wav: 48 kHz / PCM16 / stereo')
     args = parser.parse_args()
     args.session_cache = SessionCache()
     if not args.input.exists():

@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 def main():
     out=ROOT/'licenses';out.mkdir(exist_ok=True)
     packages=('numpy','soundfile','cffi','pycparser','pyinstaller','pyinstaller-hooks-contrib',
-              'altgraph','packaging','pefile','pywin32-ctypes','setuptools')
+              'altgraph','packaging','pefile','pywin32-ctypes','setuptools','soxr','mutagen','Pillow')
     versions=[]
     for name in packages:
         dist=metadata.distribution(name);versions.append(f'{name}=={dist.version}')
